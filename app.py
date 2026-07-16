@@ -5,7 +5,6 @@ import pandas as pd
 st.set_page_config(page_title="Momentum Radar Pro", layout="wide")
 st.title("🚀 Momentum-Radar Pro")
 
-# Ionos wurde hier als IOS.DE hinzugefügt
 TICKERS = ["AAPL", "NVDA", "AMD", "TSLA", "META", "AMZN", "PLTR", "COIN", "UNH", "SAP.DE", "RHM.DE", "IOS.DE"]
 
 def get_data(ticker):
@@ -16,24 +15,33 @@ def get_data(ticker):
         today = hist.iloc[-1]
         hist_20d = hist.iloc[-21:-1]
         avg_vol = hist_20d['Volume'].mean()
+        
+        # Berechnung
         rvol = today['Volume'] / avg_vol if avg_vol > 0 else 0
         price_change_pct = ((today['Close'] - today['Open']) / today['Open']) * 100
         momentum_score = today['Volume'] * ((today['Close'] - today['Open']) / today['Open'])
-        return {"Symbol": ticker, "Kurs": round(today['Close'], 2), "Änderung %": round(price_change_pct, 2), "RVOL": round(rvol, 2), "Momentum Score": int(momentum_score)}
+        
+        # HIER WAREN DIE DATEN, DIE JETZT ALLE VERFÜGBAR SIND
+        return {
+            "Symbol": ticker, 
+            "Kurs": round(today['Close'], 2), 
+            "Änderung %": round(price_change_pct, 2), 
+            "RVOL": round(rvol, 2), 
+            "Volumen": int(today['Volume']), 
+            "Momentum Score": int(momentum_score)
+        }
     except Exception:
         return None
-# ... (der Code oben bleibt gleich) ...
 
 if st.button("📈 Scan starten"):
     results = []
     for ticker in TICKERS:
         data = get_data(ticker)
-        # NEUER FILTER: Zeigt einfach alles an, egal ob Plus oder Minus
         if data:
             results.append(data)
     
     if results:
-        # Sortieren nach Volumen, damit du die Bewegung siehst
+        # Jetzt kennt das Programm "Volumen" und kann danach sortieren
         df = pd.DataFrame(results).sort_values("Volumen", ascending=False)
         st.table(df)
     else:

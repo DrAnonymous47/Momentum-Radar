@@ -22,15 +22,19 @@ def get_data(ticker):
         return {"Symbol": ticker, "Kurs": round(today['Close'], 2), "Änderung %": round(price_change_pct, 2), "RVOL": round(rvol, 2), "Momentum Score": int(momentum_score)}
     except Exception:
         return None
+# ... (der Code oben bleibt gleich) ...
 
 if st.button("📈 Scan starten"):
     results = []
     for ticker in TICKERS:
         data = get_data(ticker)
-        if data and data['Änderung %'] > 0 and data['RVOL'] >= 1.0:
+        # NEUER FILTER: Zeigt einfach alles an, egal ob Plus oder Minus
+        if data:
             results.append(data)
+    
     if results:
-        df = pd.DataFrame(results).sort_values("Momentum Score", ascending=False)
+        # Sortieren nach Volumen, damit du die Bewegung siehst
+        df = pd.DataFrame(results).sort_values("Volumen", ascending=False)
         st.table(df)
     else:
-        st.info("Keine passenden Aktien gefunden.")
+        st.info("Keine Daten gefunden. Überprüfe die Internetverbindung.")

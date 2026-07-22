@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # 1. STREAMLIT CONFIG (Muss ganz oben stehen)
-st.set_page_config(page_title="Deutscher Markt Radar", layout="wide")
+st.set_page_config(page_title="Deutscher Markt Radar Ultra Pro", layout="wide")
 
 # Modernes FinTech Dark-Mode Design
 st.markdown("""
@@ -14,60 +14,92 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. DATENBANK (XETRA TICKER)
+# 2. KOMPLETTE DATENBANK (DAX 40, MDAX, SDAX & TecDAX)
 DEUTSCHE_AKTIEN = {
-    "SAP.DE": ("SAP SE", "DAX"),
-    "SIE.DE": ("Siemens AG", "DAX"),
-    "MBG.DE": ("Mercedes-Benz Group", "DAX"),
-    "DTE.DE": ("Deutsche Telekom", "DAX"),
-    "ALV.DE": ("Allianz SE", "DAX"),
-    "RHM.DE": ("Rheinmetall AG", "DAX"),
-    "BMW.DE": ("BMW AG", "DAX"),
-    "LHA.DE": ("Lufthansa", "MDAX"),
-    "TKA.DE": ("Thyssenkrupp", "MDAX"),
-    "NEM.DE": ("Nemetschek", "MDAX"),
-    "AIXA.DE": ("Aixtron", "TecDAX"),
-    "HAG.DE": ("Hensoldt", "MDAX"),
-    "DEQ.DE": ("Deutz AG", "SDAX"),
-    "HDD.DE": ("Heidelberger Druck", "SDAX"),
-    "CEC.DE": ("Ceconomy", "SDAX"),
-    "VAC.DE": ("VARTA AG", "SDAX"),
-    "MED.DE": ("MEDION", "SDAX"),
-    "HAB.DE": ("Hamborner REIT", "SDAX"),
-    "BVB.DE": ("Borussia Dortmund", "SDAX"),
-    "1U1.DE": ("1&1 AG", "SDAX"),
-    "LEI.DE": ("Leoni AG", "SDAX"),
-    "MLP.DE": ("MLP SE", "SDAX")
+    # --- DAX 40 ---
+    "ADS.DE": ("Adidas", "DAX"), "AIR.DE": ("Airbus", "DAX"), "ALV.DE": ("Allianz SE", "DAX"),
+    "BAS.DE": ("BASF", "DAX"), "BAYN.DE": ("Bayer AG", "DAX"), "BEI.DE": ("Beiersdorf", "DAX"),
+    "BMW.DE": ("BMW AG", "DAX"), "BNR.DE": ("Brenntag", "DAX"), "CON.DE": ("Continental", "DAX"),
+    "1COV.DE": ("Covestro", "DAX"), "DTG.DE": ("Daimler Truck", "DAX"), "DB1.DE": ("Deutsche Börse", "DAX"),
+    "DBK.DE": ("Deutsche Bank", "DAX"), "DTE.DE": ("Deutsche Telekom", "DAX"), "DHL.DE": ("DHL Group", "DAX"),
+    "EON.DE": ("E.ON", "DAX"), "FRE.DE": ("Fresenius", "DAX"), "FME.DE": ("Fresenius Medical Care", "DAX"),
+    "HEI.DE": ("Heidelberg Materials", "DAX"), "HEN3.DE": ("Henkel", "DAX"), "HNR1.DE": ("Hannover Rück", "DAX"),
+    "IFX.DE": ("Infineon", "DAX"), "MBG.DE": ("Mercedes-Benz Group", "DAX"), "MRK.DE": ("Merck KGaA", "DAX"),
+    "MTX.DE": ("MTU Aero Engines", "DAX"), "MUV2.DE": ("Münchener Rück", "DAX"), "P911.DE": ("Porsche AG", "DAX"),
+    "PAH3.DE": ("Porsche SE", "DAX"), "QIA.DE": ("Qiagen", "DAX"), "RHM.DE": ("Rheinmetall", "DAX"),
+    "RWE.DE": ("RWE AG", "DAX"), "SAP.DE": ("SAP SE", "DAX"), "SRT3.DE": ("Sartorius", "DAX"),
+    "SIE.DE": ("Siemens AG", "DAX"), "ENR.DE": ("Siemens Energy", "DAX"), "SHL.DE": ("Siemens Healthineers", "DAX"),
+    "SY1.DE": ("Symrise", "DAX"), "VOW3.DE": ("Volkswagen Vz.", "DAX"), "VNA.DE": ("Vonovia", "DAX"),
+    "ZAL.DE": ("Zalando", "DAX"),
+
+    # --- MDAX ---
+    "AIXA.DE": ("Aixtron", "TecDAX/MDAX"), "AMZ.DE": ("SMA Solar", "MDAX"), "BC8.DE": ("Bechtle", "MDAX"),
+    "BKN.DE": ("Bilfinger", "MDAX"), "BOSS.DE": ("Hugo Boss", "MDAX"), "CBK.DE": ("Commerzbank", "MDAX"),
+    "CTS.DE": ("CTS Eventim", "MDAX"), "EVK.DE": ("Evonik Industries", "MDAX"), "EVT.DE": ("Evotec", "MDAX"),
+    "FRA.DE": ("Fraport", "MDAX"), "FPE3.DE": ("Fuchs SE", "MDAX"), "G1A.DE": ("GEA Group", "MDAX"),
+    "GXI.DE": ("Gerresheimer", "MDAX"), "HAG.DE": ("Hensoldt", "MDAX"), "HFG.DE": ("HelloFresh", "MDAX"),
+    "HLE.DE": ("Hella", "MDAX"), "HOT.DE": ("Hochtief", "MDAX"), "JUN3.DE": ("Jungheinrich", "MDAX"),
+    "KBX.DE": ("Knorr-Bremse", "MDAX"), "KRN.DE": ("Krones", "MDAX"), "LEG.DE": ("LEG Immobilien", "MDAX"),
+    "LHA.DE": ("Lufthansa", "MDAX"), "MOR.DE": ("MorphoSys", "MDAX"), "NEM.DE": ("Nemetschek", "MDAX"),
+    "PUM.DE": ("PUMA", "MDAX"), "RAA.DE": ("Rational", "MDAX"), "RKI.DE": ("RSI / Redcare Pharmacy", "MDAX"),
+    "SGL.DE": ("SGL Carbon", "MDAX"), "SHA.DE": ("Schaeffler", "MDAX"), "SIX2.DE": ("Sixt SE", "MDAX"),
+    "SVAB.DE": ("Ströer", "MDAX"), "TAG.DE": ("TAG Immobilien", "MDAX"), "TKA.DE": ("Thyssenkrupp", "MDAX"),
+    "TMV.DE": ("TeamViewer", "MDAX"), "TLX.DE": ("Talanx", "MDAX"), "TUI1.DE": ("TUI AG", "MDAX"),
+    "UTDI.DE": ("United Internet", "MDAX"), "WCH.DE": ("Wacker Chemie", "MDAX"), "WAC.DE": ("Wacker Neuson", "MDAX"),
+    "G24.DE": ("Scout24", "MDAX"), "HYQ.DE": ("Hypoport", "MDAX"),
+
+    # --- SDAX & Nebentitel ---
+    "1U1.DE": ("1&1 AG", "SDAX"), "A3M.DE": ("Auto1 Group", "SDAX"), "ADV.DE": ("Adesso", "SDAX"),
+    "AT1.DE": ("Aroundtown", "SDAX"), "BVB.DE": ("Borussia Dortmund", "SDAX"), "CEC.DE": ("Ceconomy", "SDAX"),
+    "COK.DE": ("Cancom", "SDAX"), "DEQ.DE": ("Deutz AG", "SDAX"), "DNX.DE": ("Dermapharm", "SDAX"),
+    "DRW3.DE": ("Drägerwerk", "SDAX"), "ELG.DE": ("Elmos Semiconductor", "SDAX"), "FNTN.DE": ("Freenet", "SDAX"),
+    "GFT.DE": ("GFT Technologies", "SDAX"), "GLJ.DE": ("GRENKE AG", "SDAX"), "HDD.DE": ("Heidelberger Druck", "SDAX"),
+    "HHFA.DE": ("HHLA", "SDAX"), "HOC.DE": ("Hornbach Holding", "SDAX"), "JEN.DE": ("Jenoptik", "SDAX"),
+    "KCO.DE": ("Klöckner & Co", "SDAX"), "KSB3.DE": ("KSB SE", "SDAX"), "KWS.DE": ("KWS Saat", "SDAX"),
+    "LPK.DE": ("LPKF Laser", "SDAX"), "MED.DE": ("MEDION", "SDAX"), "MLP.DE": ("MLP SE", "SDAX"),
+    "PNE.DE": ("PNE AG", "SDAX"), "SMT.DE": ("SUSS MicroTec", "SDAX"), "VOS.DE": ("Vossloh", "SDAX"),
+    "VAC.DE": ("VARTA AG", "SDAX"), "HAB.DE": ("Hamborner REIT", "SDAX"), "LEI.DE": ("Leoni AG", "SDAX")
 }
 
-# 3. DATEN LADEN & BERECHNEN
-@st.cache_data(ttl=60)
+# 3. HIGH-SPEED BATCH DATEN LADEN
+@st.cache_data(ttl=300)
 def load_market_data():
+    tickers = list(DEUTSCHE_AKTIEN.keys())
+    
+    # Lädt ALLE Ticker parallel in einem einzigen Request runter!
+    raw_data = yf.download(tickers, period="7mo", progress=False)
+    
     summary_data = []
     history_dict = {}
 
     for ticker, (name, segment) in DEUTSCHE_AKTIEN.items():
         try:
-            stock = yf.Ticker(ticker)
-            df = stock.history(period="7mo")
-            
+            # Extrahiere Ticker-Daten aus dem Multi-Index DataFrame
+            df = pd.DataFrame({
+                'Open': raw_data['Open'][ticker],
+                'High': raw_data['High'][ticker],
+                'Low': raw_data['Low'][ticker],
+                'Close': raw_data['Close'][ticker]
+            }).dropna(subset=['Close'])
+
             if len(df) >= 2:
                 current_price = float(df['Close'].iloc[-1])
                 prev_close = float(df['Close'].iloc[-2])
-                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+                change_pct = ((current_price - prev_close) / prev_close) * 100 if prev_close > 0 else 0.0
                 
                 # 130-Tage SMA für RSL
                 if len(df) >= 130:
                     sma130 = df['Close'].rolling(window=130).mean().iloc[-1]
-                    rsl = (current_price / sma130) * 100
+                    rsl = (current_price / sma130) * 100 if sma130 > 0 else None
                 else:
                     rsl = None
 
                 rsl_trend = "🟢" if (rsl and rsl >= 100) else "🔴"
 
                 summary_data.append({
-                    "Ticker": ticker,
                     "Name": name,
+                    "Ticker": ticker,
                     "Segment": segment,
                     "Kurs (€)": round(current_price, 2),
                     "Veränderung (%)": round(change_pct, 2),
@@ -82,10 +114,9 @@ def load_market_data():
 
 # 4. HAUPTANWENDUNG
 def main():
-    st.title("📈 Deutscher Markt Radar Ultra Pro")
+    st.title("📈 Deutscher Markt Radar Ultra Pro (DAX / MDAX / SDAX)")
     
-    # Daten laden
-    with st.spinner("Lade Echtzeitkurse von XETRA..."):
+    with st.spinner("Scanne 150+ deutsche Aktientitel in Echtzeit von XETRA..."):
         df, history_dict = load_market_data()
 
     if df.empty:
@@ -94,13 +125,24 @@ def main():
 
     # SIDEBAR FILTER
     st.sidebar.header("🔍 Filter & Einstellungen")
+    
+    # Segment-Filter (z. B. nur DAX anzeigen)
+    segment_filter = st.sidebar.multiselect(
+        "Index / Segment filtern:",
+        options=["DAX", "MDAX", "SDAX", "TecDAX/MDAX"],
+        default=[]
+    )
+    
     max_price = st.sidebar.number_input("Max. Preis (€) [0 = Deaktiviert]", min_value=0.0, value=0.0, step=5.0)
-    top_thresh = st.sidebar.slider("Top Gewinner Schwelle (%)", min_value=0.0, max_value=10.0, value=2.5, step=0.1)
-    flop_thresh = st.sidebar.slider("Flop Verlierer Schwelle (%)", min_value=0.0, max_value=10.0, value=2.5, step=0.1)
+    top_thresh = st.sidebar.slider("Min. Gewinner Schwelle (%)", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
+    flop_thresh = st.sidebar.slider("Min. Verlierer Schwelle (%)", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
     search_query = st.sidebar.text_input("Aktie suchen...", "")
 
     # FILTERING LOGIK
     filtered_df = df.copy()
+
+    if segment_filter:
+        filtered_df = filtered_df[filtered_df['Segment'].isin(segment_filter)]
 
     if search_query:
         filtered_df = filtered_df[
@@ -111,8 +153,9 @@ def main():
     if max_price > 0:
         filtered_df = filtered_df[filtered_df['Kurs (€)'] <= max_price]
 
-    top_winners = filtered_df[filtered_df['Veränderung (%)'] >= top_thresh]
-    flop_losers = filtered_df[filtered_df['Veränderung (%)'] <= -flop_thresh]
+    # TOP & FLOP SORTIERUNG
+    top_winners = filtered_df[filtered_df['Veränderung (%)'] >= top_thresh].sort_values(by='Veränderung (%)', ascending=False)
+    flop_losers = filtered_df[filtered_df['Veränderung (%)'] <= -flop_thresh].sort_values(by='Veränderung (%)', ascending=True)
 
     # KPI METRICS
     c1, c2, c3 = st.columns(3)
@@ -124,56 +167,83 @@ def main():
 
     # TABELLEN
     col_left, col_right = st.columns(2)
+    
     with col_left:
         st.subheader(f"🟢 Top Gewinner (>= +{top_thresh}%)")
-        st.dataframe(top_winners, use_container_width=True)
+        if not top_winners.empty:
+            st.dataframe(
+                top_winners,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Veränderung (%)": st.column_config.NumberColumn(format="+%.2f %%"),
+                    "Kurs (€)": st.column_config.NumberColumn(format="%.2f €")
+                }
+            )
+        else:
+            st.info("Keine Aktien mit dieser Mindestgewinn-Schwelle gefunden.")
 
     with col_right:
         st.subheader(f"🔴 Flop Verlierer (<= -{flop_thresh}%)")
-        st.dataframe(flop_losers, use_container_width=True)
+        if not flop_losers.empty:
+            st.dataframe(
+                flop_losers,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Veränderung (%)": st.column_config.NumberColumn(format="%.2f %%"),
+                    "Kurs (€)": st.column_config.NumberColumn(format="%.2f €")
+                }
+            )
+        else:
+            st.info("Keine Aktien mit dieser Mindestverlust-Schwelle gefunden.")
 
     st.markdown("---")
 
     # INTERAKTIVER CHART
     st.subheader("📊 Interaktiver Candlestick-Chart")
-    selected_ticker = st.selectbox(
-        "Aktie für Analyse auswählen:",
-        options=list(history_dict.keys()),
-        format_func=lambda x: f"{DEUTSCHE_AKTIEN[x][0]} ({x})"
-    )
-
-    if selected_ticker in history_dict:
-        stock_df = history_dict[selected_ticker].copy()
-        stock_df['SMA130'] = stock_df['Close'].rolling(window=130).mean()
-
-        fig = go.Figure()
-        
-        # Candlestick Trace
-        fig.add_trace(go.Candlestick(
-            x=stock_df.index,
-            open=stock_df['Open'],
-            high=stock_df['High'],
-            low=stock_df['Low'],
-            close=stock_df['Close'],
-            name="Kurs"
-        ))
-        
-        # 130-Tage SMA Linie
-        fig.add_trace(go.Scatter(
-            x=stock_df.index,
-            y=stock_df['SMA130'],
-            mode='lines',
-            name='130-Tage SMA',
-            line=dict(color='orange', width=1.5)
-        ))
-
-        fig.update_layout(
-            title=f"{DEUTSCHE_AKTIEN[selected_ticker][0]} ({selected_ticker})",
-            template="plotly_dark",
-            xaxis_rangeslider_visible=False,
-            height=500
+    
+    available_tickers = [t for t in filtered_df['Ticker'].tolist() if t in history_dict]
+    
+    if available_tickers:
+        selected_ticker = st.selectbox(
+            "Aktie für Analyse auswählen:",
+            options=available_tickers,
+            format_func=lambda x: f"{DEUTSCHE_AKTIEN[x][0]} ({x}) [{DEUTSCHE_AKTIEN[x][1]}]"
         )
-        st.plotly_chart(fig, use_container_width=True)
+
+        if selected_ticker in history_dict:
+            stock_df = history_dict[selected_ticker].copy()
+            stock_df['SMA130'] = stock_df['Close'].rolling(window=130).mean()
+
+            fig = go.Figure()
+            
+            # Candlestick
+            fig.add_trace(go.Candlestick(
+                x=stock_df.index,
+                open=stock_df['Open'],
+                high=stock_df['High'],
+                low=stock_df['Low'],
+                close=stock_df['Close'],
+                name="Kurs"
+            ))
+            
+            # 130-Tage SMA Linie
+            fig.add_trace(go.Scatter(
+                x=stock_df.index,
+                y=stock_df['SMA130'],
+                mode='lines',
+                name='130-Tage SMA',
+                line=dict(color='orange', width=1.5)
+            ))
+
+            fig.update_layout(
+                title=f"{DEUTSCHE_AKTIEN[selected_ticker][0]} ({selected_ticker})",
+                template="plotly_dark",
+                xaxis_rangeslider_visible=False,
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
 
@@ -202,4 +272,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

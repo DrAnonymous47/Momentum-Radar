@@ -89,8 +89,8 @@ def lade_und_berechne_markt_daten():
             if -2.5 <= abw_vortag_prozent <= 2.5:
                 continue
                 
-            # Bedingung C: RSL muss stark sein (> 110)
-            if rsl_wert <= 110.0:
+            # Bedingung C: RSL muss stark sein (> 100)
+            if rsl_wert <= 100.0:
                 continue
                 
             # Daten für die Tabelle speichern

@@ -14,15 +14,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. KOMPLETTE DATENBANK (DAX 40, MDAX, SDAX & TecDAX)
+# 2. KOMPLETTE & KORRIGIERTE DATENBANK (Aktueller Stand XETRA)
 DEUTSCHE_AKTIEN = {
-    # --- DAX 40 ---
+    # --- DAX 40 (Die 40 größten deutschen Unternehmen) ---
     "ADS.DE": ("Adidas", "DAX"), "AIR.DE": ("Airbus", "DAX"), "ALV.DE": ("Allianz SE", "DAX"),
     "BAS.DE": ("BASF", "DAX"), "BAYN.DE": ("Bayer AG", "DAX"), "BEI.DE": ("Beiersdorf", "DAX"),
-    "BMW.DE": ("BMW AG", "DAX"), "BNR.DE": ("Brenntag", "DAX"), "CON.DE": ("Continental", "DAX"),
-    "1COV.DE": ("Covestro", "DAX"), "DTG.DE": ("Daimler Truck", "DAX"), "DB1.DE": ("Deutsche Börse", "DAX"),
-    "DBK.DE": ("Deutsche Bank", "DAX"), "DTE.DE": ("Deutsche Telekom", "DAX"), "DHL.DE": ("DHL Group", "DAX"),
-    "EON.DE": ("E.ON", "DAX"), "FRE.DE": ("Fresenius", "DAX"), "FME.DE": ("Fresenius Medical Care", "DAX"),
+    "BMW.DE": ("BMW AG", "DAX"), "BNR.DE": ("Brenntag", "DAX"), "CBK.DE": ("Commerzbank", "DAX"),
+    "CON.DE": ("Continental", "DAX"), "1COV.DE": ("Covestro", "DAX"), "DTG.DE": ("Daimler Truck", "DAX"),
+    "DB1.DE": ("Deutsche Börse", "DAX"), "DBK.DE": ("Deutsche Bank", "DAX"), "DTE.DE": ("Deutsche Telekom", "DAX"),
+    "DHL.DE": ("DHL Group", "DAX"), "EON.DE": ("E.ON", "DAX"), "FRE.DE": ("Fresenius", "DAX"),
     "HEI.DE": ("Heidelberg Materials", "DAX"), "HEN3.DE": ("Henkel", "DAX"), "HNR1.DE": ("Hannover Rück", "DAX"),
     "IFX.DE": ("Infineon", "DAX"), "MBG.DE": ("Mercedes-Benz Group", "DAX"), "MRK.DE": ("Merck KGaA", "DAX"),
     "MTX.DE": ("MTU Aero Engines", "DAX"), "MUV2.DE": ("Münchener Rück", "DAX"), "P911.DE": ("Porsche AG", "DAX"),
@@ -32,23 +32,22 @@ DEUTSCHE_AKTIEN = {
     "SY1.DE": ("Symrise", "DAX"), "VOW3.DE": ("Volkswagen Vz.", "DAX"), "VNA.DE": ("Vonovia", "DAX"),
     "ZAL.DE": ("Zalando", "DAX"),
 
-    # --- MDAX ---
-    "AIXA.DE": ("Aixtron", "TecDAX/MDAX"), "AMZ.DE": ("SMA Solar", "MDAX"), "BC8.DE": ("Bechtle", "MDAX"),
-    "BKN.DE": ("Bilfinger", "MDAX"), "BOSS.DE": ("Hugo Boss", "MDAX"), "CBK.DE": ("Commerzbank", "MDAX"),
-    "CTS.DE": ("CTS Eventim", "MDAX"), "EVK.DE": ("Evonik Industries", "MDAX"), "EVT.DE": ("Evotec", "MDAX"),
-    "FRA.DE": ("Fraport", "MDAX"), "FPE3.DE": ("Fuchs SE", "MDAX"), "G1A.DE": ("GEA Group", "MDAX"),
-    "GXI.DE": ("Gerresheimer", "MDAX"), "HAG.DE": ("Hensoldt", "MDAX"), "HFG.DE": ("HelloFresh", "MDAX"),
-    "HLE.DE": ("Hella", "MDAX"), "HOT.DE": ("Hochtief", "MDAX"), "JUN3.DE": ("Jungheinrich", "MDAX"),
-    "KBX.DE": ("Knorr-Bremse", "MDAX"), "KRN.DE": ("Krones", "MDAX"), "LEG.DE": ("LEG Immobilien", "MDAX"),
-    "LHA.DE": ("Lufthansa", "MDAX"), "MOR.DE": ("MorphoSys", "MDAX"), "NEM.DE": ("Nemetschek", "MDAX"),
-    "PUM.DE": ("PUMA", "MDAX"), "RAA.DE": ("Rational", "MDAX"), "RKI.DE": ("RSI / Redcare Pharmacy", "MDAX"),
-    "SGL.DE": ("SGL Carbon", "MDAX"), "SHA.DE": ("Schaeffler", "MDAX"), "SIX2.DE": ("Sixt SE", "MDAX"),
-    "SVAB.DE": ("Ströer", "MDAX"), "TAG.DE": ("TAG Immobilien", "MDAX"), "TKA.DE": ("Thyssenkrupp", "MDAX"),
-    "TMV.DE": ("TeamViewer", "MDAX"), "TLX.DE": ("Talanx", "MDAX"), "TUI1.DE": ("TUI AG", "MDAX"),
-    "UTDI.DE": ("United Internet", "MDAX"), "WCH.DE": ("Wacker Chemie", "MDAX"), "WAC.DE": ("Wacker Neuson", "MDAX"),
-    "G24.DE": ("Scout24", "MDAX"), "HYQ.DE": ("Hypoport", "MDAX"),
+    # --- MDAX (Mittelgroße Unternehmen) ---
+    "AIXA.DE": ("Aixtron", "MDAX"), "AMZ.DE": ("SMA Solar", "MDAX"), "BC8.DE": ("Bechtle", "MDAX"),
+    "BKN.DE": ("Bilfinger", "MDAX"), "BOSS.DE": ("Hugo Boss", "MDAX"), "CTS.DE": ("CTS Eventim", "MDAX"), 
+    "DEL2.DE": ("Delivery Hero", "MDAX"), "EVK.DE": ("Evonik Industries", "MDAX"), "EVT.DE": ("Evotec", "MDAX"),
+    "FME.DE": ("Fresenius Medical Care", "MDAX"), "FRA.DE": ("Fraport", "MDAX"), "FPE3.DE": ("Fuchs SE", "MDAX"), 
+    "G1A.DE": ("GEA Group", "MDAX"), "GXI.DE": ("Gerresheimer", "MDAX"), "HAG.DE": ("Hensoldt", "MDAX"), 
+    "HFG.DE": ("HelloFresh", "MDAX"), "HLE.DE": ("Hella", "MDAX"), "HOT.DE": ("Hochtief", "MDAX"), 
+    "JUN3.DE": ("Jungheinrich", "MDAX"), "KBX.DE": ("Knorr-Bremse", "MDAX"), "KRN.DE": ("Krones", "MDAX"), 
+    "LEG.DE": ("LEG Immobilien", "MDAX"), "LHA.DE": ("Lufthansa", "MDAX"), "NEM.DE": ("Nemetschek", "MDAX"),
+    "PUM.DE": ("PUMA", "MDAX"), "RAA.DE": ("Rational", "MDAX"), "RDC.DE": ("Redcare Pharmacy", "MDAX"), 
+    "SHA.DE": ("Schaeffler", "MDAX"), "SIX2.DE": ("Sixt SE", "MDAX"), "SVAB.DE": ("Ströer", "MDAX"), 
+    "TAG.DE": ("TAG Immobilien", "MDAX"), "TKA.DE": ("Thyssenkrupp", "MDAX"), "TMV.DE": ("TeamViewer", "MDAX"), 
+    "TLX.DE": ("Talanx", "MDAX"), "TUI1.DE": ("TUI AG", "MDAX"), "UTDI.DE": ("United Internet", "MDAX"), 
+    "WCH.DE": ("Wacker Chemie", "MDAX"), "G24.DE": ("Scout24", "MDAX"), "HYQ.DE": ("Hypoport", "MDAX"),
 
-    # --- SDAX & Nebentitel ---
+    # --- SDAX & Nebenwerte (Kleine Unternehmen & Prime Standard) ---
     "1U1.DE": ("1&1 AG", "SDAX"), "A3M.DE": ("Auto1 Group", "SDAX"), "ADV.DE": ("Adesso", "SDAX"),
     "AT1.DE": ("Aroundtown", "SDAX"), "BVB.DE": ("Borussia Dortmund", "SDAX"), "CEC.DE": ("Ceconomy", "SDAX"),
     "COK.DE": ("Cancom", "SDAX"), "DEQ.DE": ("Deutz AG", "SDAX"), "DNX.DE": ("Dermapharm", "SDAX"),
@@ -56,9 +55,10 @@ DEUTSCHE_AKTIEN = {
     "GFT.DE": ("GFT Technologies", "SDAX"), "GLJ.DE": ("GRENKE AG", "SDAX"), "HDD.DE": ("Heidelberger Druck", "SDAX"),
     "HHFA.DE": ("HHLA", "SDAX"), "HOC.DE": ("Hornbach Holding", "SDAX"), "JEN.DE": ("Jenoptik", "SDAX"),
     "KCO.DE": ("Klöckner & Co", "SDAX"), "KSB3.DE": ("KSB SE", "SDAX"), "KWS.DE": ("KWS Saat", "SDAX"),
-    "LPK.DE": ("LPKF Laser", "SDAX"), "MED.DE": ("MEDION", "SDAX"), "MLP.DE": ("MLP SE", "SDAX"),
+    "LPK.DE": ("LPKF Laser", "SDAX"), "MDN.DE": ("MEDION", "Prime Standard"), "MLP.DE": ("MLP SE", "SDAX"),
     "PNE.DE": ("PNE AG", "SDAX"), "SMT.DE": ("SUSS MicroTec", "SDAX"), "VOS.DE": ("Vossloh", "SDAX"),
-    "VAC.DE": ("VARTA AG", "SDAX"), "HAB.DE": ("Hamborner REIT", "SDAX"), "LEI.DE": ("Leoni AG", "SDAX")
+    "VAR1.DE": ("VARTA AG", "Prime Standard"), "HAB.DE": ("Hamborner REIT", "SDAX"), "SFQ.DE": ("SAF-Holland", "SDAX"),
+    "WAC.DE": ("Wacker Neuson", "SDAX")
 }
 
 # 3. HIGH-SPEED BATCH DATEN LADEN
@@ -116,7 +116,7 @@ def load_market_data():
 def main():
     st.title("📈 Deutscher Markt Radar Ultra Pro (DAX / MDAX / SDAX)")
     
-    with st.spinner("Scanne 150+ deutsche Aktientitel in Echtzeit von XETRA..."):
+    with st.spinner("Scanne 110+ deutsche Aktientitel in Echtzeit von XETRA..."):
         df, history_dict = load_market_data()
 
     if df.empty:
@@ -126,10 +126,9 @@ def main():
     # SIDEBAR FILTER
     st.sidebar.header("🔍 Filter & Einstellungen")
     
-    # Segment-Filter (z. B. nur DAX anzeigen)
     segment_filter = st.sidebar.multiselect(
         "Index / Segment filtern:",
-        options=["DAX", "MDAX", "SDAX", "TecDAX/MDAX"],
+        options=["DAX", "MDAX", "SDAX", "Prime Standard"],
         default=[]
     )
     
@@ -218,7 +217,6 @@ def main():
 
             fig = go.Figure()
             
-            # Candlestick
             fig.add_trace(go.Candlestick(
                 x=stock_df.index,
                 open=stock_df['Open'],
@@ -228,7 +226,6 @@ def main():
                 name="Kurs"
             ))
             
-            # 130-Tage SMA Linie
             fig.add_trace(go.Scatter(
                 x=stock_df.index,
                 y=stock_df['SMA130'],
@@ -272,3 +269,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,154 +1,204 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from plotly.graph_objects import Candlestick, Layout
-import datetime
-import os
+import plotly.graph_objects as go
 
-st.markdown(f"<style>{open('style.css', 'r').read()}</style>", unsafe_allow_html=True)
+# 1. STREAMLIT CONFIG (Muss ganz oben stehen)
+st.set_page_config(page_title="Deutscher Markt Radar", layout="wide")
 
-# Define the German stocks to be monitored
+# Modernes FinTech Dark-Mode Design
+st.markdown("""
+<style>
+    .stApp { background-color: #0e1117; color: #ffffff; }
+    .stMetric { background-color: #1e222d; padding: 15px; border-radius: 10px; border: 1px solid #2a2e39; }
+</style>
+""", unsafe_allow_html=True)
+
+# 2. DATENBANK (XETRA TICKER)
 DEUTSCHE_AKTIEN = {
-    "SAP": "DAX",
-    "SIE": "DAX",
-    "MBG": "DAX",
-    "DTE": "DAX",
-    "ALV": "DAX",
-    "RHM": "MDAX",
-    "BMW": "DAX",
-    "LHA": "MDAX",
-    "TKA": "MDAX",
-    "NEM": "MDAX",
-    "AIX": "TEC",
-    "HAG": "MDAX",
-    "DEQ": "SDAX",
-    "HDD": "SDAX",
-    "CEC": "OTC",
-    "VAC": "SDAX",
-    "MED": "SDAX",
-    "HAB": "SDAX",
-    "BVB": "OTC",
-    "1U1": "OTC",
-    "LEI": "SDAX",
-    "MLP": "OTC",
+    "SAP.DE": ("SAP SE", "DAX"),
+    "SIE.DE": ("Siemens AG", "DAX"),
+    "MBG.DE": ("Mercedes-Benz Group", "DAX"),
+    "DTE.DE": ("Deutsche Telekom", "DAX"),
+    "ALV.DE": ("Allianz SE", "DAX"),
+    "RHM.DE": ("Rheinmetall AG", "DAX"),
+    "BMW.DE": ("BMW AG", "DAX"),
+    "LHA.DE": ("Lufthansa", "MDAX"),
+    "TKA.DE": ("Thyssenkrupp", "MDAX"),
+    "NEM.DE": ("Nemetschek", "MDAX"),
+    "AIXA.DE": ("Aixtron", "TecDAX"),
+    "HAG.DE": ("Hensoldt", "MDAX"),
+    "DEQ.DE": ("Deutz AG", "SDAX"),
+    "HDD.DE": ("Heidelberger Druck", "SDAX"),
+    "CEC.DE": ("Ceconomy", "SDAX"),
+    "VAC.DE": ("VARTA AG", "SDAX"),
+    "MED.DE": ("MEDION", "SDAX"),
+    "HAB.DE": ("Hamborner REIT", "SDAX"),
+    "BVB.DE": ("Borussia Dortmund", "SDAX"),
+    "1U1.DE": ("1&1 AG", "SDAX"),
+    "LEI.DE": ("Leoni AG", "SDAX"),
+    "MLP.DE": ("MLP SE", "SDAX")
 }
 
-# Load stock data for the last 7 months using yfinance and Streamlit's caching decorator
-@st.cache_data(ttl=60*60*24*7)
-def get_stock_data():
-    df = pd.DataFrame()
-    for ticker, segment in DEUTSCHE_AKTIEN.items():
-        stock = yf.Ticker(ticker + '.DE')
-        stock_info = stock.info
-        history = stock.history(period="7mo")
-        df[ticker] = history['Close']
-    return df
+# 3. DATEN LADEN & BERECHNEN
+@st.cache_data(ttl=60)
+def load_market_data():
+    summary_data = []
+    history_dict = {}
 
-# Calculate daily change percentage and RSL (130-day SMA)
-def calculate_statistics(df):
-    df['Daily Change %'] = (df['Close'].iloc[-1] - df['Close'].iloc[-2]) / df['Close'].iloc[-2] * 100
-    df['RSL'] = (df['Close'] / df['Close'].rolling(window=130).mean()) * 100
+    for ticker, (name, segment) in DEUTSCHE_AKTIEN.items():
+        try:
+            stock = yf.Ticker(ticker)
+            df = stock.history(period="7mo")
+            
+            if len(df) >= 2:
+                current_price = float(df['Close'].iloc[-1])
+                prev_close = float(df['Close'].iloc[-2])
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+                # 130-Tage SMA für RSL
+                if len(df) >= 130:
+                    sma130 = df['Close'].rolling(window=130).mean().iloc[-1]
+                    rsl = (current_price / sma130) * 100
+                else:
+                    rsl = None
 
-# Main function
+                rsl_trend = "🟢" if (rsl and rsl >= 100) else "🔴"
+
+                summary_data.append({
+                    "Ticker": ticker,
+                    "Name": name,
+                    "Segment": segment,
+                    "Kurs (€)": round(current_price, 2),
+                    "Veränderung (%)": round(change_pct, 2),
+                    "RSL": round(rsl, 2) if rsl else "N/A",
+                    "Trend": rsl_trend
+                })
+                history_dict[ticker] = df
+        except Exception:
+            continue
+
+    return pd.DataFrame(summary_data), history_dict
+
+# 4. HAUPTANWENDUNG
 def main():
-    st.set_page_config(layout="wide")
+    st.title("📈 Deutscher Markt Radar Ultra Pro")
+    
+    # Daten laden
+    with st.spinner("Lade Echtzeitkurse von XETRA..."):
+        df, history_dict = load_market_data()
 
-    # Load stock data and calculate statistics
-    stock_data = get_stock_data()
-    calculate_statistics(stock_data)
+    if df.empty:
+        st.error("Fehler beim Laden der Aktiendaten. Bitte versuche es später erneut.")
+        return
 
-    # Sidebar: Filter by maximum price, top/flop percentages, and search text
-    col1, col2 = st.beta_columns(2)
-    max_price = col1.slider("Max Price", min_value=0, max_value=10000, value=0)
-    top_percentage = col1.slider("Top %", min_value=0, max_value=5, value=2.5)
-    flop_percentage = col1.slider("Flop %", min_value=0, max_value=5, value=2.5)
-    search_text = col2.text_input("Search")
+    # SIDEBAR FILTER
+    st.sidebar.header("🔍 Filter & Einstellungen")
+    max_price = st.sidebar.number_input("Max. Preis (€) [0 = Deaktiviert]", min_value=0.0, value=0.0, step=5.0)
+    top_thresh = st.sidebar.slider("Top Gewinner Schwelle (%)", min_value=0.0, max_value=10.0, value=2.5, step=0.1)
+    flop_thresh = st.sidebar.slider("Flop Verlierer Schwelle (%)", min_value=0.0, max_value=10.0, value=2.5, step=0.1)
+    search_query = st.sidebar.text_input("Aktie suchen...", "")
 
-    # Filter the stock data based on user's preferences
-    filtered_data = stock_data[stock_data['Close'] <= max_price] \
-                         .loc[stock_data['Daily Change %'] >= top_percentage] \
-                         .loc[stock_data['Daily Change %'] <= -flop_percentage] \
-                         .query(f"index - {len(DEUTSCHE_AKTIEN)} <= index < len(Close)") \
-                         .loc[stock_data.columns[:-1]] \
-                         .rename(columns=lambda x: DEUTSCHE_AKTIEN[x]) \
-                         .reset_index(drop=True)
+    # FILTERING LOGIK
+    filtered_df = df.copy()
 
-    # KPI metrics for the scanned stocks, winners, and losers
-    st.markdown("**Scanned Stocks:** " + ", ".join(filtered_data.columns[:-1]))
-    st.metric("Winners", len(filtered_data[filtered_data['Daily Change %'] >= top_percentage]))
-    st.metric("Losers", len(filtered_data[filtered_data['Daily Change %'] <= -flop_percentage]))
+    if search_query:
+        filtered_df = filtered_df[
+            filtered_df['Name'].str.contains(search_query, case=False) |
+            filtered_df['Ticker'].str.contains(search_query, case=False)
+        ]
 
-    # Tables for winners and losers
-    st.dataframe(filtered_data[filtered_data['Daily Change %'] >= top_percentage])
-    st.dataframe(filtered_data[filtered_data['Daily Change %'] <= -flop_percentage])
+    if max_price > 0:
+        filtered_df = filtered_df[filtered_df['Kurs (€)'] <= max_price]
 
-    # Interactive chart for a selected stock
-    selected_stock = st.selectbox("Select Stock", options=list(DEUTSCHE_AKTIEN.keys()))
-    fig = make_chart(selected_stock, filtered_data)
-    st.plotly_chart(fig)
+    top_winners = filtered_df[filtered_df['Veränderung (%)'] >= top_thresh]
+    flop_losers = filtered_df[filtered_df['Veränderung (%)'] <= -flop_thresh]
 
-    # Session watchlist: Save and load watched stocks as CSV or ZIP files
+    # KPI METRICS
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Gescannte Aktien", len(filtered_df))
+    c2.metric("Top Gewinner", len(top_winners))
+    c3.metric("Flop Verlierer", len(flop_losers))
+
+    st.markdown("---")
+
+    # TABELLEN
+    col_left, col_right = st.columns(2)
+    with col_left:
+        st.subheader(f"🟢 Top Gewinner (>= +{top_thresh}%)")
+        st.dataframe(top_winners, use_container_width=True)
+
+    with col_right:
+        st.subheader(f"🔴 Flop Verlierer (<= -{flop_thresh}%)")
+        st.dataframe(flop_losers, use_container_width=True)
+
+    st.markdown("---")
+
+    # INTERAKTIVER CHART
+    st.subheader("📊 Interaktiver Candlestick-Chart")
+    selected_ticker = st.selectbox(
+        "Aktie für Analyse auswählen:",
+        options=list(history_dict.keys()),
+        format_func=lambda x: f"{DEUTSCHE_AKTIEN[x][0]} ({x})"
+    )
+
+    if selected_ticker in history_dict:
+        stock_df = history_dict[selected_ticker].copy()
+        stock_df['SMA130'] = stock_df['Close'].rolling(window=130).mean()
+
+        fig = go.Figure()
+        
+        # Candlestick Trace
+        fig.add_trace(go.Candlestick(
+            x=stock_df.index,
+            open=stock_df['Open'],
+            high=stock_df['High'],
+            low=stock_df['Low'],
+            close=stock_df['Close'],
+            name="Kurs"
+        ))
+        
+        # 130-Tage SMA Linie
+        fig.add_trace(go.Scatter(
+            x=stock_df.index,
+            y=stock_df['SMA130'],
+            mode='lines',
+            name='130-Tage SMA',
+            line=dict(color='orange', width=1.5)
+        ))
+
+        fig.update_layout(
+            title=f"{DEUTSCHE_AKTIEN[selected_ticker][0]} ({selected_ticker})",
+            template="plotly_dark",
+            xaxis_rangeslider_visible=False,
+            height=500
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
+
+    # WATCHLIST & EXPORT
+    st.subheader("⭐ Watchlist & Daten-Export")
+    
     if "watchlist" not in st.session_state:
-        st.session_state.watchlist = set()
+        st.session_state.watchlist = []
 
-    if st.button("Save Watchlist"):
-        save_as(st.session_state.watchlist, 'watchlist.csv')
+    selected_wl = st.selectbox("Aktie zur Watchlist hinzufügen:", df['Ticker'].tolist(), key="wl_add")
+    if st.button("Zu Watchlist hinzufügen"):
+        if selected_wl not in st.session_state.watchlist:
+            st.session_state.watchlist.append(selected_wl)
+            st.success(f"{selected_wl} zur Watchlist hinzugefügt!")
 
-    if os.path.exists('watchlist.csv'):
-        watched_stocks = load_watchlist('watchlist.csv')
-        st.session_state.watchlist |= watched_stocks
+    if st.session_state.watchlist:
+        st.write("Deine geparkten Favoriten:", st.session_state.watchlist)
 
-    for stock in filtered_data.columns[:-1]:
-        if stock in st.session_state.watchlist:
-            st.markdown(f'<b>{stock}</b>', unsafe_allow_html=True)
-
-    # Download button for the watchlist data as CSV or ZIP
-    if st.button("Download Watchlist Data"):
-        download_csv_or_zip(filtered_data, 'watchlist')
-
-def make_chart(ticker, filtered_data):
-    fig = Layout()
-    candlestick_trace = Candlestick(x=filtered_data.index,
-                                     open=filtered_data[ticker]['Open'],
-                                     high=filtered_data[ticker]['High'],
-                                     low=filtered_data[ticker]['Low'],
-                                     close=filtered_data[ticker]['Close'])
-    fig.add_trace(candlestick_trace)
-    fig.update_xaxes(rangeslider_visible=False,
-                     range_year=[pd.to_datetime("2023-01-01").date(), pd.to_datetime("2023-12-31").date()])
-    fig.add_trace({'x': filtered_data.index, 'y': filtered_data[ticker]['RSL'],
-                   'line': {'color': "gray", 'width': 1}})
-    fig.update_layout(showlegend=False)
-    return fig
-
-def save_as(watchlist, filename):
-    df = pd.DataFrame({'Stocks': list(watchlist)})
-    if filename.endswith('.csv'):
-        df.to_csv(filename)
-    elif filename.endswith('.zip'):
-        with zipfile.ZipFile(filename, 'w') as zf:
-            for stock in watchlist:
-                zf.write(f"{stock}.csv", stream=open(f"{stock}.csv", "rb"))
-
-def load_watchlist(filename):
-    watchlist = set()
-    with open(filename, 'r') as f:
-        for line in f:
-            watchlist.add(line.strip())
-    return watchlist
-
-def download_csv_or_zip(df, name):
-    if df.shape[0] > 1000:
-        zip_name = f"{name}_data.zip"
-        with zipfile.ZipFile(zip_name, 'w') as zf:
-            for col in df.columns[:-1]:
-                zf.write(pd.DataFrame({col: [row[col] for row in df.itertuples()]}).to_csv(index=False),
-                         f"{col}.csv")
-        st.download_file(zip_name, "data.zip", "application/zip")
-    else:
-        csv_name = f"{name}_data.csv"
-        df.to_csv(csv_name)
-        st.download_file(csv_name, f"{name}_data.csv", "text/csv")
+    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Alle gefilterten Daten als CSV herunterladen",
+        data=csv_data,
+        file_name="aktien_radar_daten.csv",
+        mime="text/csv"
+    )
 
 if __name__ == "__main__":
     main()

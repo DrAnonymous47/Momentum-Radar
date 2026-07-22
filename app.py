@@ -1,257 +1,201 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+import plotly.graph_objects as go
+import numpy as np
 import time
+import os
+import shutil
+import zipfile
 
-# =============================================================================
-# 1. SEITEN-KONFIGURATION & LAYOUT
-# =============================================================================
-st.set_page_config(
-    page_title="Deutscher Markt Radar Pro", 
-    page_icon="📈", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+st.markdown(
+  "<style>.css-1qwj096{--bs-breadcrumb-divider: none;}</style>",
+  unsafe_allow_html=True
 )
 
-# =============================================================================
-# 2. GESAMTE DEUTSCHE AKTIEN-DATENBANK (VOLLSTÄNDIGER MARKT SCAN)
-# =============================================================================
 DEUTSCHE_AKTIEN = {
-    # --- DAX 40 ---
-    "ADS.DE": ("Adidas", "DAX"), "ALV.DE": ("Allianz", "DAX"), "BAS.DE": ("BASF", "DAX"),
-    "BAYN.DE": ("Bayer", "DAX"), "BEI.DE": ("Beiersdorf", "DAX"), "BMW.DE": ("BMW", "DAX"),
-    "BNR.DE": ("Brenntag", "DAX"), "CBK.DE": ("Commerzbank", "DAX"), "CON.DE": ("Continental", "DAX"),
-    "1COV.DE": ("Covestro", "DAX"), "DTG.DE": ("Daimler Truck", "DAX"), "DBK.DE": ("Deutsche Bank", "DAX"),
-    "DB1.DE": ("Deutsche Börse", "DAX"), "DPW.DE": ("DHL Group", "DAX"), "DTE.DE": ("Deutsche Telekom", "DAX"),
-    "EOAN.DE": ("E.ON", "DAX"), "FRE.DE": ("Fresenius", "DAX"), "HNR1.DE": ("Hannover Rück", "DAX"),
-    "HEI.DE": ("Heidelberg Materials", "DAX"), "HEN3.DE": ("Henkel", "DAX"), "IFX.DE": ("Infineon", "DAX"),
-    "MBG.DE": ("Mercedes-Benz Group", "DAX"), "MRK.DE": ("Merck", "DAX"), "MTX.DE": ("MTU Aero Engines", "DAX"),
-    "MUV2.DE": ("Münchener Rück", "DAX"), "PAH3.DE": ("Porsche SE", "DAX"), "P911.DE": ("Porsche AG Vz.", "DAX"),
-    "PUM.DE": ("Puma", "DAX"), "QIA.DE": ("Qiagen", "DAX"), "RHM.DE": ("Rheinmetall", "DAX"),
-    "RWE.DE": ("RWE", "DAX"), "SAP.DE": ("SAP", "DAX"), "SRT3.DE": ("Sartorius", "DAX"),
-    "SIE.DE": ("Siemens", "DAX"), "ENR.DE": ("Siemens Energy", "DAX"), "SHL.DE": ("Siemens Healthineers", "DAX"),
-    "SY1.DE": ("Symrise", "DAX"), "VOW3.DE": ("Volkswagen Vz.", "DAX"), "VNA.DE": ("Vonovia", "DAX"),
-    "ZAL.DE": ("Zalando", "DAX"),
-
-    # --- MDAX & TECDAX ---
-    "AIXA.DE": ("Aixtron", "TecDAX"), "AFX.DE": ("Carl Zeiss Meditec", "TecDAX"),
-    "BC8.DE": ("Bechtle", "MDAX"), "BKG.DE": ("Bilfinger", "MDAX"), "EVD.DE": ("CTS Eventim", "MDAX"),
-    "DWNI.DE": ("Deutsche Wohnen", "MDAX"), "DUE.DE": ("Dürr", "MDAX"), "EVK.DE": ("Evonik", "MDAX"),
-    "EVT.DE": ("Evotec", "TecDAX"), "FIE.DE": ("Fielmann", "MDAX"), "FRA.DE": ("Fraport", "MDAX"),
-    "FNTN.DE": ("freenet", "TecDAX"), "G1A.DE": ("GEA Group", "MDAX"), "GXI.DE": ("Gerresheimer", "MDAX"),
-    "HLAG.DE": ("Hapag-Lloyd", "MDAX"), "HAG.DE": ("Hensoldt", "TecDAX"), "HOT.DE": ("Hochtief", "MDAX"),
-    "HYQ.DE": ("Hypoport", "MDAX"), "JEN.DE": ("Jenoptik", "TecDAX"), "JUN3.DE": ("Jungheinrich", "MDAX"),
-    "KGX.DE": ("KION Group", "MDAX"), "KRN.DE": ("Krones", "MDAX"), "LEG.DE": ("LEG Immobilien", "MDAX"),
-    "LHA.DE": ("Lufthansa", "MDAX"), "NEM.DE": ("Nemetschek", "TecDAX"), "NDX1.DE": ("Nordex", "TecDAX"),
-    "PSM.DE": ("ProSiebenSat.1", "MDAX"), "RRTL.DE": ("RTL Group", "MDAX"), "S92.DE": ("SMA Solar", "TecDAX"),
-    "SZG.DE": ("Salzgitter", "MDAX"), "TEG.DE": ("TAG Immobilien", "MDAX"), "TKA.DE": ("thyssenkrupp", "MDAX"),
-    "UTDI.DE": ("United Internet", "TecDAX"), "WCH.DE": ("Wacker Chemie", "MDAX"), "WAF.DE": ("Siltronic", "TecDAX"),
-    "IOS.DE": ("IONOS", "TecDAX"), "SUAN.DE": ("SÜSS MicroTec", "TecDAX"), "TMV.DE": ("TeamViewer", "TecDAX"),
-    "ELG.DE": ("Elmos Semi", "TecDAX"), "COK.DE": ("Cancom", "TecDAX"), "O2D.DE": ("Telefónica", "TecDAX"),
-
-    # --- SDAX, NEBENWERTE & SMALL-CAPS (KLASSIKER & KLEINE MARKEN) ---
-    "DEQ.DE": ("Deutz AG", "SDAX / Nebenwert"),
-    "HDD.DE": ("Heidelberger Druck", "Nebenwert"),
-    "CEC.DE": ("Ceconomy (MediaMarkt/Saturn)", "SDAX"),
-    "BVB.DE": ("Borussia Dortmund", "SDAX"),
-    "VAC.DE": ("Varta", "SDAX / Nebenwert"),
-    "LEI.DE": ("Leifheit", "Nebenwert"),
-    "MLP.DE": ("MLP SE", "SDAX"),
-    "MED.DE": ("Medios", "SDAX"),
-    "HAB.DE": ("Hamborner REIT", "SDAX"),
-    "1U1.DE": ("1&1", "SDAX"),
-    "AT1.DE": ("Aroundtown", "SDAX"),
-    "DRW3.DE": ("Drägerwerk", "SDAX"),
-    "DWS.DE": ("DWS Group", "SDAX"),
-    "GFT.DE": ("GFT Technologies", "SDAX"),
-    "HLE.DE": ("HELLA", "SDAX"),
-    "KCO.DE": ("Klöckner & Co", "SDAX"),
-    "MOR.DE": ("MorphoSys", "SDAX"),
-    "NOEJ.DE": ("Norma Group", "SDAX"),
-    "SGL.DE": ("SGL Carbon", "SDAX"),
-    "SOW.DE": ("Software AG", "SDAX"),
-    "SNG.DE": ("STRATEC", "SDAX"),
-    "TPE.DE": ("Technotrans", "Nebenwert"),
-    "WAC.DE": ("Wacker Neuson", "SDAX"),
-    "PNE3.DE": ("PNE AG", "SDAX"),
-    "PFV.DE": ("Pfeiffer Vacuum", "Nebenwert"),
-    "ADV.DE": ("Adesso", "SDAX"), "A2E.DE": ("Aumann", "Nebenwert"),
-    "G24.DE": ("Scout24", "MDAX"), "GLJ.DE": ("GRENKE", "SDAX"),
-    "B9C.DE": ("Basler", "Nebenwert"), "LNS.DE": ("LPKF Laser", "Nebenwert"),
-    "KTA.DE": ("KWS Saat", "SDAX"), "S3T.DE": ("Secunet", "SDAX"),
-    "SAX.DE": ("Ströer", "MDAX"), "GMM.DE": ("Hamborner", "SDAX"),
-    "O2D.DE": ("Telefónica Deutschland", "TecDAX"), "BWB.DE": ("Bet-at-home", "Nebenwert")
+  "SAP.DE": {"name": "SAP AG", "segment": "DAX"},
+  "SIE.DE": {"name": "SIEMENS AG", "segment": "DAX"},
+  "RHM.DE": {"name": "Robert Bosch GmbH", "segment": "DAX"},
+  "MBG.DE": {"name": "Merck KGaA", "segment": "DAX"},
+  "ALV.DE": {"name": "ALLLIANZ SE", "segment": "DAX"},
+  "BMW.DE": {"name": "Bayerische Motorenwerke AG", "segment": "DAX"},
+  # MDAX & TecDAX
+  "AIXA.DE": {"name": "Adidas AG", "segment": "MDAX"},
+  "HAG.DE": {"name": "Hannover Rück SE", "segment": "TecDAX"},
+  "NEM.DE": {"name": "NEC TECNALIA Research & Innovation", "segment": "TecDAX"},
+  "LHA.DE": {"name": "Linde AG", "segment": "TecDAX"},
+  "TKA.DE": {"name": "Technische Kunststoff-Weberei GmbH & Co. KG", "segment": "TecDAX"},
+  # SDAX & NEBENWERTE
+  "DEQ.DE": {"name": "Deutsche EuroShop AG", "segment": "SDAX"},
+  "HDD.DE": {"name": "Deutz AG", "segment": "NEBENWERTE"},
+  "CEC.DE": {"name": "Ceconomy SE", "segment": "NEBENWERTE"},
+  "VAC.DE": {"name": "Viacom International Inc.", "segment": "NEBENWERTE"},
 }
 
-# =============================================================================
-# 3. KERNLOGIK: DATA-FETCHING & BERECHNUNG
-# =============================================================================
-@st.cache_data(ttl=60)
-def lade_und_berechne_markt_daten(max_preis, min_top_prozent, min_flop_prozent):
-    erfolgreiche_treffer = []
-    
-    for ticker, (name, segment) in DEUTSCHE_AKTIEN.items():
-        try:
-            stock = yf.Ticker(ticker)
-            df = stock.history(period="7mo")
-            
-            if df.empty or len(df) < 130:
-                continue
-                
-            df = df.dropna()
-            
-            ist_kurs = float(df['Close'].iloc[-1])
-            schluss_vortag = float(df['Close'].iloc[-2])
-            
-            abw_vortag_prozent = ((ist_kurs - schluss_vortag) / schluss_vortag) * 100
-            
-            if len(df) >= 4:
-                durchschnitt_3_tage = df['Close'].iloc[-4:-1].mean()
-            else:
-                durchschnitt_3_tage = schluss_vortag
-                
-            abw_3_tage_prozent = ((ist_kurs - durchschnitt_3_tage) / durchschnitt_3_tage) * 100
-            
-            # RSL (130 Tage SMA) - Rein als Info!
-            sma_130 = df['Close'].rolling(window=130).mean().iloc[-1]
-            rsl_wert = (ist_kurs / sma_130) * 100
-            
-            # -----------------------------------------------------------------
-            # FILTER-LOGIK (RSL SPIELT HIER NULL ROLLE)
-            # -----------------------------------------------------------------
-            # Optionaler Preisfilter (0 = Deaktiviert, zeigt alle Aktien)
-            if max_preis > 0 and ist_kurs > max_preis:
-                continue
-                
-            # Schwellenwerte für Gewinner/Verlierer
-            ist_top = (abw_vortag_prozent >= min_top_prozent)
-            ist_flop = (abw_vortag_prozent <= -abs(min_flop_prozent))
-            
-            if not (ist_top or ist_flop):
-                continue
-                
-            # RSL als reine Infoanzeige (Grün/Rot)
-            rsl_text = f"🟢 {rsl_wert:.0f}" if rsl_wert >= 100.0 else f"🔴 {rsl_wert:.0f}"
-                
-            erfolgreiche_treffer.append({
-                "Name": name,
-                "Segment": segment,
-                "IST Kurs": ist_kurs,
-                "Schluss Vortag": schluss_vortag,
-                "Abw. Vortag (%)": abw_vortag_prozent,
-                "Ø 3 Tage": durchschnitt_3_tage,
-                "Abw. 3 Tage (%)": abw_3_tage_prozent,
-                "RSL (Info)": rsl_text
-            })
-            
-        except Exception:
-            continue
-            
-    return pd.DataFrame(erfolgreiche_treffer)
+@st.cache_data(ttl=60 * 60)
+def load_stock_data(ticker):
+  start = datetime.now() - timedelta(days=210)
+  end = datetime.now()
+  df = yf.download(ticker, start=start, end=end)
+  df['Close'] = df['Close'].apply(pd.to_numeric)
+  return df[['Close']]
 
-# =============================================================================
-# 4. DASHBOARD OBERFLÄCHE
-# =============================================================================
-def main():
-    heute_str = datetime.now().strftime("%d.%m.%Y")
-    st.title("📈 Deutscher Markt Radar Pro")
-    st.markdown(f"**Stand:** {heute_str} | Automatische Analyse aller deutschen Werte")
-    
-    st.sidebar.header("⚙️ Filter & Einstellungen")
-    
-    max_preis = st.sidebar.number_input(
-        "Maximaler Aktienkurs in € (0 = Alle Kurse/Keine Grenze):", 
-        min_value=0, 
-        max_value=1000, 
-        value=0, 
-        step=10,
-        help="0 bedeutet: Es gibt kein Preislimit. Auch Aktien unter 10 € oder über 100 € werden angezeigt."
-    )
-    
-    min_top_prozent = st.sidebar.slider(
-        "Top-Schwelle (Mindestgewinn in %):", 
-        min_value=0.5, 
-        max_value=10.0, 
-        value=2.5, 
-        step=0.5
-    )
-    
-    min_flop_prozent = st.sidebar.slider(
-        "Flop-Schwelle (Mindestverlust in %):", 
-        min_value=0.5, 
-        max_value=10.0, 
-        value=2.5, 
-        step=0.5
-    )
-    
-    live_modus = st.sidebar.toggle("🔄 Live-Radar aktivieren (60s Update)")
-    
-    st.markdown("---")
+def calculate_stats(df):
+  current_day = df.iloc[-1]
+  prev_day = df.iloc[-2]
+  daily_change_percentage = ((current_day - prev_day) / prev_day) * 100
 
-    tabellen_platzhalter = st.empty()
-    
-    def zeichne_tabellen():
-        with st.spinner("Scanne alle deutschen Marktwerte..."):
-            df_ergebnis = lade_und_berechne_markt_daten(max_preis, min_top_prozent, min_flop_prozent)
-            
-            if df_ergebnis.empty:
-                st.warning("⚠️ Keine Treffer mit den aktuellen Schwellenwerten gefunden.")
-            else:
-                df_tops = df_ergebnis[df_ergebnis["Abw. Vortag (%)"] > 0]
-                df_flops = df_ergebnis[df_ergebnis["Abw. Vortag (%)"] < 0]
-                
-                df_top15 = df_tops.sort_values(by="Abw. Vortag (%)", ascending=False).head(15)
-                df_flop15 = df_flops.sort_values(by="Abw. Vortag (%)", ascending=True).head(15)
-                
-                spalten_layout = {
-                    "Name": st.column_config.TextColumn("Name", width="medium"),
-                    "Segment": st.column_config.TextColumn("Segment", width="small"),
-                    "IST Kurs": st.column_config.NumberColumn("IST Kurs", format="%.2f €"),
-                    "Schluss Vortag": st.column_config.NumberColumn("Schluss Vortag", format="%.2f €"),
-                    "Abw. Vortag (%)": st.column_config.NumberColumn("Abw. Vortag", format="%+.2f %%"),
-                    "Ø 3 Tage": st.column_config.NumberColumn("Ø 3 Tage", format="%.2f €"),
-                    "Abw. 3 Tage (%)": st.column_config.NumberColumn("Abw. 3 Tage", format="%+.2f %%"),
-                    "RSL (Info)": st.column_config.TextColumn("RSL (Info)", width="small")
-                }
+  three_days_avg = df.rolling(window=3).mean()
+  rsl = (current_day / three_days_avg[-1]) * 100
 
-                if not df_top15.empty:
-                    st.subheader(f"🟢 Top Ausbrüche (≥ +{min_top_prozent}%)")
-                    st.dataframe(df_top15, use_container_width=True, hide_index=True, column_config=spalten_layout)
-                else:
-                    st.info(f"Aktuell keine Gewinner über +{min_top_prozent}%.")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                if not df_flop15.empty:
-                    st.subheader(f"🔴 Flop Einbrüche (≤ -{min_flop_prozent}%)")
-                    st.dataframe(df_flop15, use_container_width=True, hide_index=True, column_config=spalten_layout)
-                else:
-                    st.info(f"Aktuell keine Verlierer unter -{min_flop_prozent}%.")
+  return daily_change_percentage, rsl
 
-                st.success(f"✅ Letztes Update: {datetime.now().strftime('%H:%M:%S Uhr')} | Gesamtzahl überprüfter deutscher Firmen: {len(DEUTSCHE_AKTIEN)}")
+st.sidebar.header("Filter")
+max_price = st.slider("Maximum Price", min_value=0, step=1)
+top_percentage = st.slider("Top %", min_value=1, max_value=5)
+flop_percentage = st.slider("Flop %", min_value=1, max_value=5)
+search_text = st.sidebar.text_input("Search")
 
-    if live_modus:
-        with tabellen_platzhalter.container():
-            zeichne_tabellen()
-        time.sleep(60) 
-        st.rerun()     
-    else:
-        if st.button("🚀 Markt jetzt scannen", type="primary"):
-            with tabellen_platzhalter.container():
-                zeichne_tabellen()
+st.write("# German Stock Radar - Real-time Aktien Scanner für XETRA")
+st.write(f"[Filtered stocks: {len(DEUTSCHE_AKTIEN)}]")
 
-    # =============================================================================
-    # 5. NOTIZBEREICH
-    # =============================================================================
-    st.markdown("---")
-    st.subheader("📝 Notizen:")
-    st.text_area(
-        "Handelsbeobachtungen festhalten:",
-        height=120,
-        placeholder="z. B. Deutz oder Heidelberger Druck heute besonders aktiv..."
-    )
+stock_data = {}
+watched = set()
 
-if __name__ == "__main__":
-    main()
+for ticker, _ in DEUTSCHE_AKTIEN.items():
+  stock_data[ticker] = load_stock_data(ticker)
+  daily_change_percentage, rsl = calculate_stats(stock_data[ticker])
+  st.write(f"### {DEUTSCHE_AKTIEN[ticker]['name']} ({DEUTSCHE_AKTIEN[ticker]['segment']})")
+  st.write(f"Tagesveränderung: {daily_change_percentage:.2f}%")
+  st.write(f"RSL: {rsl:.2f}% 🟢/🔴")
 
+# KPI Cards, Tables and Interactive Chart go here...
+
+# Filtered stocks based on search text, max price, top_percentage, flop_percentage
+filtered_stocks = [stock for stock in DEUTSCHE_AKTIEN if search_text is None or stock[0] == search_text and
+                  stock_data[stock[0]]['Close'].iloc[-1] <= max_price and
+                  daily_change_percentage > -flop_percentage * 0.01 and
+                  daily_change_percentage >= top_percentage * 0.01]
+
+# Sort filtered stocks by daily change percentage in descending order
+sorted_stocks = sorted(filtered_stocks, key=lambda x: -daily_change_percentage)
+
+st.write("## Top Gewinner")
+for stock in sorted_stocks[:10]:
+  st.write(f"### {stock[0]} ({stock[1]['segment']})")
+  st.write(f"Tagesveränderung: {daily_change_percentage:.2f}%")
+  st.write(f"RSL: {rsl:.2f}% 🟢/🔴")
+
+st.write("## Flop Verlierer")
+for stock in reversed(sorted(filtered_stocks, key=lambda x: x[0], reverse=True)[:10]):
+  st.write(f"### {stock[0]} ({stock[1]['segment']})")
+  st.write(f"Tagesveränderung: {daily_change_percentage:.2f}%")
+  st.write(f"RSL: {rsl:.2f}% 🟢/🔴")
+
+# Interactive chart for a selected stock
+selected_stock = st.selectbox("Auswählen", [stock[0] for stock in sorted_stocks])
+fig = go.Figure()
+fig.add_trace(go.Candlestick(x=stock_data[selected_stock].index,
+                             open=stock_data[selected_stock]['Open'],
+                             high=stock_data[selected_stock]['High'],
+                             low=stock_data[selected_stock]['Low'],
+                             close=stock_data[selected_stock]['Close']))
+fig.add_trace(go.Scatter(y=[three_days_avg[-1]], x=stock_data[selected_stock].index, mode='lines', name="130-Tage SMA"))
+fig.update_layout(title={'text': f"{selected_stock} ({DEUTSCHE_AKTIEN[selected_stock]['segment']})",
+                        'y': 0.95},
+                 xaxis_rangeslider_visible=False)
+st.plotly_chart(fig)
+
+# Session Watchlist and CSV Export Button go here...
+
+# Save the session watchlist to a temporary file
+def save_watchlist():
+  temp_folder = get_scratchpad_folder()
+  os.makedirs(temp_folder, exist_ok=True)
+  temp_file = f"{temp_folder}/watchlist_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+  with open(temp_file, 'w', newline='') as csvfile:
+      fieldnames = ["Ticker", "Name", "Segment"]
+      writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+      writer.writeheader()
+      for stock in watched:
+          writer.writerow({"Ticker": stock[0], "Name": DEUTSCHE_AKTIEN[stock[0]]["name"], "Segment": DEUTSCHE_AKTIEN[stock[0]]["segment"]})
+  return temp_file
+
+# Load the session watchlist from a temporary file
+def load_watchlist(filename=None):
+  if filename is None:
+      load_file_attachment("watchlist.csv")  # If attachment is missing, try to load it from the workspace.
+  elif not os.path.isfile(filename):
+      raise FileNotFoundError(f"The watchlist file '{filename}' does not exist.")
+  with open(filename, 'r', newline='') as csvfile:
+      reader = csv.DictReader(csvfile)
+      watched_stocks = [(stock["Ticker"], DEUTSCHE_AKTIEN[stock["Ticker"]]) for stock in reader]
+  return watched_stocks
+
+# CSV Export Button functionality
+CSV_EXPORT_BUTTON_STYLE = """
+<style>
+.stButton > .css-184z95q {
+background: #2c3e50; /* W3Schools Blue */
+border: none;
+color: white;
+padding: 15px 32px;
+text-align: center;
+text-decoration: none;
+display: inline-block;
+font-size: 16px;
+margin: 4px 2px;
+cursor: pointer;
+}
+.stButton > .css-184z95q:hover {
+background: #3eaccc; /* W3Schools Blue */
+}
+</style>"""
+CSV_EXPORT_BUTTON = f'<button id="csvExportButton" class="stButton" type="button" onclick="downloadCSV(\'{save_watchlist()}\')">Download Watchlist (.csv)</button>'
+
+# Add the CSV Export Button to the app UI
+st.markdown(CSV_EXPORT_BUTTON_STYLE, unsafe_allow_html=True)
+st.write(CSV_EXPORT_BUTTON)
+
+# Initialize session watchlist
+watchlist = load_watchlist()
+
+# Session Watchlist functionality
+def add_to_watchlist(ticker):
+  global watched
+  if ticker not in watched:
+      watched.add(ticker)
+      st.session_state.watched = list(watched)
+      save_watchlist()
+
+def remove_from_watchlist(ticker):
+  global watched
+  if ticker in watched:
+      watched.remove(ticker)
+      st.session_state.watched = list(watched)
+      save_watchlist()
+
+# Function to download the watchlist as CSV
+def downloadCSV(filename):
+  with open(filename, 'r', encoding='utf-8') as csvfile:
+      data = csvfile.read()
+  zip_memory = zipfile.ZipFile(None, mode='w', compression=zipfile.ZIP_DEFLATED)
+  zip_memory.writestr('watchlist.csv', data.encode())
+  zip_memory.close()
+
+  # Create a temporary directory for the downloaded file
+  temp_folder = get_scratchpad_folder()
+  os.makedirs(temp_folder, exist_ok=True)
+  temp_file = f"{temp_folder}/watchlist_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+
+  # Write the downloaded file to the temporary zip archive
+  with open(temp_file, 'wb') as zipped_file:
+      zip_memory.open(temp_file)
+      shutil.copyfileobj(zip_memory, zipped_file)
+      zip_memory.close()
+
+  # Open a new tab to download the file
+  st.write("Download in progress...", unsafe_allow_html=True)
+  st.markdown(f'<a href="{temp_file}" download>Download Watchlist (.zip)</a>', unsafe_allow_html=True)

@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
+import time
 
 # =============================================================================
 # 1. SEITEN-KONFIGURATION & LAYOUT
@@ -49,7 +50,8 @@ AKTIEN_DATENBANK = {
 # =============================================================================
 # 3. KERNLOGIK: BERECHNUNG DER DATEN
 # =============================================================================
-@st.cache_data(ttl=600)
+# Cache-Zeit auf 60 Sekunden reduziert, damit der Live-Modus frische Daten kriegt
+@st.cache_data(ttl=60)
 def lade_und_berechne_markt_daten():
     erfolgreiche_treffer = []
     
@@ -79,18 +81,20 @@ def lade_und_berechne_markt_daten():
             rsl_wert = (ist_kurs / sma_130) * 100
             
             # -----------------------------------------------------------------
-            # 4. FILTER ANWENDEN
+            # 4. DIE NEUE, SMARTE FILTER-LOGIK
             # -----------------------------------------------------------------
             # Bedingung A: Preis unter 100 Euro
             if ist_kurs > 100.0:
                 continue
                 
-            # Bedingung B: Abweichung muss GRÖSSER als 2,5% ODER KLEINER als -2,5% sein
-            if -2.5 <= abw_vortag_prozent <= 2.5:
-                continue
-                
-            # Bedingung C: RSL muss stark sein (> 100)
-            if rsl_wert <= 100.0:
+            # Logik für TOP-Kandidaten: Abweichung > +2.5% UND RSL > 110
+            ist_top_kandidat = (abw_vortag_prozent > 2.5) and (rsl_wert > 110.0)
+            
+            # Logik für FLOP-Kandidaten: Abweichung < -2.5% (RSL wird hierbei ignoriert!)
+            ist_flop_kandidat = (abw_vortag_prozent < -2.5)
+            
+            # Wenn die Aktie Weder Top noch Flop ist, überspringen wir sie
+            if not (ist_top_kandidat or ist_flop_kandidat):
                 continue
                 
             # Daten für die Tabelle speichern
@@ -110,25 +114,43 @@ def lade_und_berechne_markt_daten():
     return pd.DataFrame(erfolgreiche_treffer)
 
 # =============================================================================
-# 5. UI-KOMPONENTEN (Benutzeroberfläche)
+# 5. UI-KOMPONENTEN (Benutzeroberfläche & Auto-Update)
 # =============================================================================
 def main():
     heute_str = datetime.now().strftime("%d.%m.%Y")
     st.title("📈 Index Radar Pro (DAX, MDAX, SDAX, TecDAX)")
-    st.markdown(f"**Stand:** {heute_str} | **Filter:** Preis < 100€ | RSL > 110 | **Abweichung > +2,5% oder < -2,5%**")
+    st.markdown(f"**Stand:** {heute_str} | **Filter:** Preis < 100€ | **Tops:** > +2,5% & RSL>110 | **Flops:** < -2,5%")
+    
+    # Der Schalter für das automatische Aktualisieren
+    col_switch, col_info = st.columns([1, 3])
+    with col_switch:
+        live_modus = st.toggle("🔄 Live-Radar aktivieren (60s Update)")
+    
     st.markdown("---")
 
-    if st.button("🚀 Marktanalyse ausführen", type="primary"):
-        with st.spinner("Lade Live-Börsendaten und filtere nach Ausbrüchen..."):
-            
+    # Ein leerer Platzhalter, den wir mit den Tabellen füllen. 
+    # Dadurch flackert nicht die ganze Seite beim Neuladen.
+    tabellen_platzhalter = st.empty()
+    
+    # -------------------------------------------------------------------------
+    # TABELLEN RENDER LOGIK
+    # -------------------------------------------------------------------------
+    def zeichne_tabellen():
+        with st.spinner("Lade Live-Börsendaten..."):
             df_ergebnis = lade_und_berechne_markt_daten()
             
             if df_ergebnis.empty:
-                st.warning("⚠️ Keine Treffer heute! Keine Aktie erfüllt aktuell alle Kriterien (RSL > 110 UND Abweichung über/unter 2,5%).")
+                st.warning("⚠️ Keine Treffer! Keine Aktie erfüllt aktuell die Ausbruchs-Kriterien.")
             else:
-                df_top10 = df_ergebnis.sort_values(by="Abw. Vortag (%)", ascending=False).head(10)
-                df_flop10 = df_ergebnis.sort_values(by="Abw. Vortag (%)", ascending=True).head(10)
+                # Wir trennen die Treffer in Tops (positive Abweichung) und Flops (negative Abweichung)
+                df_tops = df_ergebnis[df_ergebnis["Abw. Vortag (%)"] > 0]
+                df_flops = df_ergebnis[df_ergebnis["Abw. Vortag (%)"] < 0]
                 
+                # Sortieren und auf Top 10 beschränken
+                df_top10 = df_tops.sort_values(by="Abw. Vortag (%)", ascending=False).head(10)
+                df_flop10 = df_flops.sort_values(by="Abw. Vortag (%)", ascending=True).head(10)
+                
+                # Spalten-Konfiguration (ohne jinja2 Abhängigkeiten)
                 spalten_layout = {
                     "Name": st.column_config.TextColumn("Name", width="medium"),
                     "IST Kurs": st.column_config.NumberColumn("IST Kurs", format="%.2f €"),
@@ -139,41 +161,45 @@ def main():
                     "RSL": st.column_config.NumberColumn("RSL", format="%.0f")
                 }
 
-                st.subheader("🟢 Top 10 (Stärkste Ausbrüche nach oben)")
-                st.dataframe(
-                    df_top10, 
-                    use_container_width=True, 
-                    hide_index=False, 
-                    column_config=spalten_layout
-                )
+                # Ausgabe der Listen
+                if not df_top10.empty:
+                    st.subheader("🟢 Top 10 (Stärkste Ausbrüche nach oben, inkl. RSL Filter)")
+                    st.dataframe(df_top10, use_container_width=True, hide_index=True, column_config=spalten_layout)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                st.subheader("🔴 Flop 10 (Stärkste Einbrüche nach unten)")
-                st.dataframe(
-                    df_flop10, 
-                    use_container_width=True, 
-                    hide_index=False, 
-                    column_config=spalten_layout
-                )
+                if not df_flop10.empty:
+                    st.subheader("🔴 Flop 10 (Stärkste Einbrüche nach unten, RSL ignoriert)")
+                    st.dataframe(df_flop10, use_container_width=True, hide_index=True, column_config=spalten_layout)
 
-                st.success(f"✅ Analyse erfolgreich. {len(df_ergebnis)} Werte haben die strengen Filter bestanden.")
+                st.success(f"✅ Letztes Update: {datetime.now().strftime('%H:%M:%S Uhr')}")
+
+    # -------------------------------------------------------------------------
+    # AUSFÜHRUNG (Manuell oder Live-Modus)
+    # -------------------------------------------------------------------------
+    if live_modus:
+        with tabellen_platzhalter.container():
+            zeichne_tabellen()
+        time.sleep(60) # Wartet 60 Sekunden
+        st.rerun()     # Startet das Skript neu, lädt aktuelle Daten
+        
+    else:
+        # Wenn der Live-Modus aus ist, nutzen wir einen klassischen Button
+        if st.button("🚀 Marktanalyse manuell ausführen", type="primary"):
+            with tabellen_platzhalter.container():
+                zeichne_tabellen()
 
     # =============================================================================
-    # 6. NOTIZBEREICH
+    # 6. NOTIZBEREICH (Sicher vor dem Reload)
     # =============================================================================
     st.markdown("---")
     st.subheader("📝 Notiz / Info:")
     
-    notiz = st.text_area(
+    st.text_area(
         "Hier kannst du dir wichtige Beobachtungen notieren:",
         height=150,
         placeholder="Beispiel: Telekom heute besonders stark am Nachmittag..."
     )
-    
-    if st.button("💾 Notiz zwischenspeichern"):
-        st.toast("Notiz wurde für diese Sitzung gespeichert!", icon="✅")
 
 if __name__ == "__main__":
     main()
-
